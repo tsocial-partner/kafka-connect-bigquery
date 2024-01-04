@@ -19,6 +19,10 @@
 
 package com.wepay.kafka.connect.bigquery.utils;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.bigquery.InsertAllRequest;
 import com.google.cloud.bigquery.TableId;
 import com.wepay.kafka.connect.bigquery.MergeQueries;
@@ -34,6 +38,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -52,6 +57,7 @@ public class SinkRecordConverter {
     private final boolean useMessageTimeDatePartitioning;
     private final boolean usePartitionDecorator;
 
+    private final ObjectMapper mapper;
 
     public SinkRecordConverter(BigQuerySinkTaskConfig config,
                                MergeBatches mergeBatches, MergeQueries mergeQueries) {
@@ -66,6 +72,10 @@ public class SinkRecordConverter {
         this.usePartitionDecorator =
             config.getBoolean(config.BIGQUERY_PARTITION_DECORATOR_CONFIG);
 
+        this.mapper = new ObjectMapper()
+                .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+                .setSerializationInclusion(JsonInclude.Include.NON_NULL);
+
     }
 
     public InsertAllRequest.RowToInsert getRecordRow(SinkRecord record, TableId table) {
@@ -76,6 +86,24 @@ public class SinkRecordConverter {
         Map<String, Object> result = config.getBoolean(config.SANITIZE_FIELD_NAME_CONFIG)
             ? FieldNameSanitizer.replaceInvalidKeys(convertedRecord)
             : convertedRecord;
+
+        // convert map type into Json string
+        Optional<List<String>> fields = config.getConvertMapFieldsToString();
+        if (fields.isPresent()) {
+            Map<String, Object> convertedMap = new HashMap<>();
+            for (Map.Entry<String, Object> entry : result.entrySet()) {
+                if (entry.getValue() instanceof Map && fields.get().contains(entry.getKey())) {
+                    try {
+                        convertedMap.put(entry.getKey(), mapper.writeValueAsString(entry.getValue()));
+                    } catch (JsonProcessingException e) {
+                        throw new RuntimeException(e);
+                    }
+                } else {
+                    convertedMap.put(entry.getKey(), entry.getValue());
+                }
+            }
+            result = convertedMap;
+        }
 
         return InsertAllRequest.RowToInsert.of(getRowId(record), result);
     }

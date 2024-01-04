@@ -215,6 +215,12 @@ public class BigQuerySinkConfig extends AbstractConfig {
     }
   };
 
+  public static final String CONVERT_MAP_FIELDS_TO_STRING_CONFIG =                     "convertMapFieldsToString";
+  private static final ConfigDef.Type CONVERT_MAP_FIELDS_TO_STRING_TYPE =              ConfigDef.Type.LIST;
+  public static final List<String> CONVERT_MAP_FIELDS_TO_STRING_DEFAULT = null;
+  private static final ConfigDef.Importance CONVERT_MAP_FIELDS_TO_STRING_IMPORTANCE =  ConfigDef.Importance.LOW;
+  public static final String CONVERT_MAP_FIELDS_TO_STRING_DOC = "List of MAP fields to be converted to STRING (optional). "
+          + "Format: comma-separated, e.g. <filed_name1>,<filed_name2>,... ";
 
   public static final String SANITIZE_FIELD_NAME_CONFIG =                     "sanitizeFieldNames";
   private static final ConfigDef.Type SANITIZE_FIELD_NAME_TYPE =              ConfigDef.Type.BOOLEAN;
@@ -641,6 +647,12 @@ public class BigQuerySinkConfig extends AbstractConfig {
             SANITIZE_FIELD_NAME_DEFAULT,
             SANITIZE_FIELD_NAME_IMPORTANCE,
             SANITIZE_FIELD_NAME_DOC
+        ).define(
+            CONVERT_MAP_FIELDS_TO_STRING_CONFIG,
+            CONVERT_MAP_FIELDS_TO_STRING_TYPE,
+            CONVERT_MAP_FIELDS_TO_STRING_DEFAULT,
+            CONVERT_MAP_FIELDS_TO_STRING_IMPORTANCE,
+            CONVERT_MAP_FIELDS_TO_STRING_DOC
         ).define(
             KAFKA_KEY_FIELD_NAME_CONFIG,
             KAFKA_KEY_FIELD_NAME_TYPE,
@@ -1103,6 +1115,13 @@ public class BigQuerySinkConfig extends AbstractConfig {
         .ofNullable(getList(BIGQUERY_CLUSTERING_FIELD_NAMES_CONFIG))
         // With Java 11 there's Predicate::not, but for now we have to just manually invert the isEmpty check
         .filter(l -> !l.isEmpty());
+  }
+
+  public Optional<List<String>> getConvertMapFieldsToString() {
+    return Optional
+            .ofNullable(getList(CONVERT_MAP_FIELDS_TO_STRING_CONFIG))
+            // With Java 11 there's Predicate::not, but for now we have to just manually invert the isEmpty check
+            .filter(l -> !l.isEmpty());
   }
 
   protected BigQuerySinkConfig(ConfigDef config, Map<String, String> properties) {
