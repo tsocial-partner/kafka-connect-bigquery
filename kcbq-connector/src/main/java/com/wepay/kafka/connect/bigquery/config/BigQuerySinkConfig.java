@@ -29,6 +29,8 @@ import com.wepay.kafka.connect.bigquery.convert.RecordConverter;
 import com.wepay.kafka.connect.bigquery.convert.SchemaConverter;
 import com.wepay.kafka.connect.bigquery.retrieve.IdentitySchemaRetriever;
 import com.wepay.kafka.connect.bigquery.utils.FieldNameSanitizer;
+import com.wepay.kafka.connect.bigquery.utils.SinkRecordConverter;
+
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.common.config.ConfigDef;
@@ -216,11 +218,11 @@ public class BigQuerySinkConfig extends AbstractConfig {
   };
 
   public static final String CONVERT_MAP_FIELDS_TO_STRING_CONFIG =                     "convertMapFieldsToString";
-  private static final ConfigDef.Type CONVERT_MAP_FIELDS_TO_STRING_TYPE =              ConfigDef.Type.LIST;
-  public static final List<String> CONVERT_MAP_FIELDS_TO_STRING_DEFAULT = null;
+  private static final ConfigDef.Type CONVERT_MAP_FIELDS_TO_STRING_TYPE =              ConfigDef.Type.STRING;
+  public static final String CONVERT_MAP_FIELDS_TO_STRING_DEFAULT = null;
   private static final ConfigDef.Importance CONVERT_MAP_FIELDS_TO_STRING_IMPORTANCE =  ConfigDef.Importance.LOW;
   public static final String CONVERT_MAP_FIELDS_TO_STRING_DOC = "List of MAP fields to be converted to STRING (optional). "
-          + "Format: comma-separated, e.g. <filed_name1>,<filed_name2>,... ";
+          + "Format: <topic1_name>:<filed_name1>,<filed_name2>,...; <topic2_name>:<filed_name3>,<filed_name4>,...";
 
   public static final String SANITIZE_FIELD_NAME_CONFIG =                     "sanitizeFieldNames";
   private static final ConfigDef.Type SANITIZE_FIELD_NAME_TYPE =              ConfigDef.Type.BOOLEAN;
@@ -1118,10 +1120,24 @@ public class BigQuerySinkConfig extends AbstractConfig {
   }
 
   public Optional<List<String>> getConvertMapFieldsToString() {
-    return Optional
-            .ofNullable(getList(CONVERT_MAP_FIELDS_TO_STRING_CONFIG))
-            // With Java 11 there's Predicate::not, but for now we have to just manually invert the isEmpty check
-            .filter(l -> !l.isEmpty());
+    return Optional.ofNullable(parseConvertMapFieldsToStringConfig(getString(CONVERT_MAP_FIELDS_TO_STRING_CONFIG)));
+  }
+
+  private List<String> parseConvertMapFieldsToStringConfig(String ConvertMapFieldsToStringConfig) {
+    if (ConvertMapFieldsToStringConfig.isEmpty()) {
+      return null;
+    }
+    List<String> ConvertMapFieldsToString = new ArrayList<>();
+
+    for (String str : ConvertMapFieldsToStringConfig.split(";")) {
+      String[] topicFieldsString = str.split(":");
+      String topic = topicFieldsString[0].trim();
+      String fields = topicFieldsString[1].trim();
+      for (String field : fields.split(",")) {
+        ConvertMapFieldsToString.add(topic + ":" + field.trim());
+      }
+    }
+    return ConvertMapFieldsToString.isEmpty() ? null : ConvertMapFieldsToString;
   }
 
   protected BigQuerySinkConfig(ConfigDef config, Map<String, String> properties) {

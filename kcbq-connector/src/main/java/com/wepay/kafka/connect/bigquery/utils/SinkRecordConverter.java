@@ -92,8 +92,8 @@ public class SinkRecordConverter {
         if (fields.isPresent()) {
             Map<String, Object> convertedMap = new HashMap<>();
             for (Map.Entry<String, Object> entry : result.entrySet()) {
-                String topic_field_reg_string = record.topic() + "/" + entry.getKey();
-                if (entry.getValue() instanceof Map && fields.get().contains(topic_field_reg_string)) {
+                String topicFieldString = record.topic().toString() + ":" + entry.getKey().toString();
+                if (entry.getValue() instanceof Map && fields.get().contains(topicFieldString)) {
                     try {
                         convertedMap.put(entry.getKey(), mapper.writeValueAsString(entry.getValue()));
                     } catch (JsonProcessingException e) {
