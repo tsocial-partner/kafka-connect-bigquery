@@ -219,10 +219,56 @@ public class BigQuerySinkConfig extends AbstractConfig {
 
   public static final String CONVERT_MAP_FIELDS_TO_STRING_CONFIG =                     "convertMapFieldsToString";
   private static final ConfigDef.Type CONVERT_MAP_FIELDS_TO_STRING_TYPE =              ConfigDef.Type.STRING;
-  public static final String CONVERT_MAP_FIELDS_TO_STRING_DEFAULT = null;
+  public static final String CONVERT_MAP_FIELDS_TO_STRING_DEFAULT = "";
   private static final ConfigDef.Importance CONVERT_MAP_FIELDS_TO_STRING_IMPORTANCE =  ConfigDef.Importance.LOW;
   public static final String CONVERT_MAP_FIELDS_TO_STRING_DOC = "List of MAP fields to be converted to STRING (optional). "
           + "Format: <topic1_name>:<filed_name1>,<filed_name2>,...; <topic2_name>:<filed_name3>,<filed_name4>,...";
+  private static final ConfigDef.Validator CONVERT_MAP_FIELDS_TO_STRING_VALIDATOR = (name,value) -> {
+    String convertMapFieldsToStringConfig = (String) ConfigDef.parseType(name, value, CONVERT_MAP_FIELDS_TO_STRING_TYPE);
+
+    if (convertMapFieldsToStringConfig.isEmpty()) {
+      return;
+    }
+
+    Map<String, String> convertMapFieldsToStringMap = new HashMap<>();
+
+    for (String str : convertMapFieldsToStringConfig.split(";")) {
+      String[] tf = str.split(":");
+
+      if (tf.length != 2) {
+        throw new ConfigException(
+                name,
+                convertMapFieldsToStringConfig,
+                "One of the topic in convertMapFieldsToString config has an invalid format."
+        );
+      }
+
+      String topic = tf[0].trim();
+      String fields = tf[1].trim();
+
+      if (topic.isEmpty() || fields.isEmpty()) {
+        throw new ConfigException(
+                name,
+                convertMapFieldsToStringConfig,
+                "One of the topic to convertMapFieldsToString config has an invalid format."
+        );
+      }
+
+      if (convertMapFieldsToStringMap.containsKey(topic)) {
+        throw new ConfigException(
+                name,
+                name,
+                String.format(
+                        "The topic name %s is duplicated. Topic names cannot be duplicated.",
+                        topic
+                )
+        );
+      }
+
+      convertMapFieldsToStringMap.put(topic, fields);
+    }
+  };
+
 
   public static final String SANITIZE_FIELD_NAME_CONFIG =                     "sanitizeFieldNames";
   private static final ConfigDef.Type SANITIZE_FIELD_NAME_TYPE =              ConfigDef.Type.BOOLEAN;
@@ -653,6 +699,7 @@ public class BigQuerySinkConfig extends AbstractConfig {
             CONVERT_MAP_FIELDS_TO_STRING_CONFIG,
             CONVERT_MAP_FIELDS_TO_STRING_TYPE,
             CONVERT_MAP_FIELDS_TO_STRING_DEFAULT,
+            CONVERT_MAP_FIELDS_TO_STRING_VALIDATOR,
             CONVERT_MAP_FIELDS_TO_STRING_IMPORTANCE,
             CONVERT_MAP_FIELDS_TO_STRING_DOC
         ).define(
@@ -1123,21 +1170,16 @@ public class BigQuerySinkConfig extends AbstractConfig {
     return Optional.ofNullable(parseConvertMapFieldsToStringConfig(getString(CONVERT_MAP_FIELDS_TO_STRING_CONFIG)));
   }
 
-  private List<String> parseConvertMapFieldsToStringConfig(String ConvertMapFieldsToStringConfig) {
-    if (ConvertMapFieldsToStringConfig.isEmpty()) {
+  private List<String> parseConvertMapFieldsToStringConfig(String convertMapFieldsToStringConfig) {
+    if (convertMapFieldsToStringConfig.isEmpty()) {
       return null;
     }
-    List<String> ConvertMapFieldsToString = new ArrayList<>();
 
-    for (String str : ConvertMapFieldsToStringConfig.split(";")) {
-      String[] topicFieldsString = str.split(":");
-      String topic = topicFieldsString[0].trim();
-      String fields = topicFieldsString[1].trim();
-      for (String field : fields.split(",")) {
-        ConvertMapFieldsToString.add(topic + ":" + field.trim());
-      }
-    }
-    return ConvertMapFieldsToString.isEmpty() ? null : ConvertMapFieldsToString;
+    return Arrays.stream(convertMapFieldsToStringConfig.split(";")).flatMap(ele -> {
+      String[] topic2Fields = ele.split(":");
+      String topic = topic2Fields[0].trim();
+      return Arrays.stream(topic2Fields[1].trim().split(",")).map(field -> topic + "." + field.trim());
+      }).collect(Collectors.toList());
   }
 
   protected BigQuerySinkConfig(ConfigDef config, Map<String, String> properties) {
