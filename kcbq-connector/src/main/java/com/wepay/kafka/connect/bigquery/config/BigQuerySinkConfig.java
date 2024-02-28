@@ -1178,7 +1178,7 @@ public class BigQuerySinkConfig extends AbstractConfig {
     return Arrays.stream(convertMapFieldsToStringConfig.split(";")).flatMap(ele -> {
       String[] topic2Fields = ele.split(":");
       String topic = topic2Fields[0].trim();
-      return Arrays.stream(topic2Fields[1].trim().split(",")).map(field -> topic + "." + field.trim());
+      return Arrays.stream(topic2Fields[1].trim().split(",")).map(field -> topic + ":" + field.trim());
       }).collect(Collectors.toList());
   }
 

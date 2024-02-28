@@ -89,6 +89,7 @@ public class SinkRecordConverter {
 
         // convert map type into Json string
         Optional<List<String>> fields = config.getConvertMapFieldsToString();
+        // logger.info("fields: {}", fields);
         if (fields.isPresent()) {
             Map<String, Object> convertedMap = new HashMap<>();
             for (Map.Entry<String, Object> entry : result.entrySet()) {
