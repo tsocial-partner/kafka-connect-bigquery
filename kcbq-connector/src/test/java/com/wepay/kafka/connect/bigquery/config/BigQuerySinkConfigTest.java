@@ -316,7 +316,7 @@ public class BigQuerySinkConfigTest {
     configProperties.put(BigQuerySinkConfig.CONVERT_MAP_FIELDS_TO_STRING_CONFIG, "topic:field1;topic2:field2");
     BigQuerySinkConfig config = new BigQuerySinkConfig(configProperties);
     List<String> MapFieldsToString = new ArrayList<>(
-      Arrays.asList("topic.field1", "topic2.field2")
+      Arrays.asList("topic:field1", "topic2:field2")
     );
     assertEquals(MapFieldsToString, config.getConvertMapFieldsToString().get());
   }
