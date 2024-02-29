@@ -295,4 +295,45 @@ public class BigQuerySinkConfigTest {
 
     new BigQuerySinkConfig(badConfigProperties);
   }
+
+  @Test (expected = ConfigException.class)
+  public void testMapFieldsToStringInvalidFormat() {
+    Map<String, String> configProperties = propertiesFactory.getProperties();
+    configProperties.put(BigQuerySinkConfig.CONVERT_MAP_FIELDS_TO_STRING_CONFIG, "topic:");
+    new BigQuerySinkConfig(configProperties);
+  }
+
+  @Test (expected = ConfigException.class)
+  public void testMapFieldsToStringDuplicateTopic() {
+    Map<String, String> configProperties = propertiesFactory.getProperties();
+    configProperties.put(BigQuerySinkConfig.CONVERT_MAP_FIELDS_TO_STRING_CONFIG, "topic:field;topic:field");
+    new BigQuerySinkConfig(configProperties);
+  }
+
+  @Test
+  public void testValidMapFieldsToString() {
+    Map<String, String> configProperties = propertiesFactory.getProperties();
+    configProperties.put(BigQuerySinkConfig.CONVERT_MAP_FIELDS_TO_STRING_CONFIG, "topic:field1;topic2:field2");
+    BigQuerySinkConfig config = new BigQuerySinkConfig(configProperties);
+    List<String> MapFieldsToString = new ArrayList<>(
+      Arrays.asList("topic:field1", "topic2:field2")
+    );
+    assertEquals(MapFieldsToString, config.getConvertMapFieldsToString().get());
+  }
+
+  @Test
+  public void testMapFieldsToStringEmptyString() {
+    Map<String, String> configProperties = propertiesFactory.getProperties();
+    configProperties.put(BigQuerySinkConfig.CONVERT_MAP_FIELDS_TO_STRING_CONFIG, "");
+    BigQuerySinkConfig config = new BigQuerySinkConfig(configProperties);
+    assertFalse(config.getTopic2TableMap().isPresent());
+  }
+
+  @Test
+  public void testMapFieldsToStringSemiColonOnly() {
+    Map<String, String> configProperties = propertiesFactory.getProperties();
+    configProperties.put(BigQuerySinkConfig.CONVERT_MAP_FIELDS_TO_STRING_CONFIG, ";");
+    BigQuerySinkConfig config = new BigQuerySinkConfig(configProperties);
+    assertFalse(config.getTopic2TableMap().isPresent());
+  }
 }
